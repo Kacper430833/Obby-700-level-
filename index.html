@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ULTIMATE OBBY 700</title>
+<style>
+body{margin:0;overflow:hidden;font-family:Arial;background:#10152c;color:white}
+#menu{position:absolute;inset:0;background:linear-gradient(135deg,#5925a9,#168fc4);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5}
+h1{font-size:clamp(35px,8vw,75px);text-shadow:4px 5px #222;margin:10px}
+button{padding:14px 28px;margin:7px;border:0;border-radius:15px;font-size:19px;font-weight:bold;cursor:pointer;background:#ffdb36;color:#282044}
+#hud{position:absolute;top:12px;left:12px;font-size:20px;display:none;text-shadow:2px 2px #000}
+#shop{display:none;position:absolute;inset:10%;background:#30205c;padding:20px;border-radius:20px;z-index:6;text-align:center}
+#controls{display:none;position:absolute;bottom:20px;left:0;right:0;justify-content:space-between;padding:15px}
+#controls button{opacity:.8}
+</style>
+</head>
+<body>
+<div id="menu">
+<h1>🌈 ULTIMATE OBBY 700</h1>
+<p>700 poziomów. Czy dasz radę?</p>
+<button onclick="start()">▶ PLAY</button>
+<button onclick="openShop()">🛒 SKINS & SHOP</button>
+<button onclick="alert('WASD lub strzałki = ruch, SPACE = skok')">SETTINGS</button>
+</div>
+<div id="hud">LEVEL: <span id="level">1</span>/700<br>🪙 <span id="coins">0</span></div>
+<div id="shop">
+<h2>🛒 SKLEP</h2>
+<p>Wybierz skina:</p>
+<button onclick="buy(0,'#ffdf38',0)">Żółty – darmowy</button>
+<button onclick="buy(100,'#ff4c83',1)">Różowy – 100 🪙</button>
+<button onclick="buy(200,'#44eaff',2)">Niebieski – 200 🪙</button>
+<button onclick="buy(300,'#a66bff',3)">Fioletowy – 300 🪙</button>
+<br><button onclick="closeShop()">WRÓĆ</button>
+</div>
+<div id="controls">
+<button onclick="keys.left=true">⬅️</button>
+<button onclick="jump()">⬆️ SKOK</button>
+<button onclick="keys.right=true">➡️</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+let scene,camera,renderer,player,platforms=[];
+let keys={left:false,right:false};
+let coins=0,level=1,playing=false,vy=0;
+let skin='#ffdf38',lastPlatform=-1;
+let startX=0;
+const speed=0.15;
+
+function init(){
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0x83d9ff);
+scene.fog=new THREE.Fog(0x83d9ff,30,100);
+camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,500);
+renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0x555577,2));
+let light=new THREE.DirectionalLight(0xffffff,2);
+light.position.set(10,20,10);
+scene.add(light);
+
+player=new THREE.Mesh(
+new THREE.BoxGeometry(1,1.5,1),
+new THREE.MeshStandardMaterial({color:skin})
+);
+player.position.set(0,3,0);
+scene.add(player);
+createCourse();
+animate();
+}
+
+function createCourse(){
+let materialColors=[0xff527a,0xffdb39,0x55e7ff,0x9c72ff,0x55eea0];
+for(let i=0;i<3500;i++){
+let stage=Math.floor(i/5)+1;
+let x=i*3;
+let y=1+Math.floor(i/5)*0.035;
+let z=Math.sin(i*.7)*2;
+let p=new THREE.Mesh(
+new THREE.BoxGeometry(2.2,.5,2.2),
+new THREE.MeshStandardMaterial({color:materialColors[stage%5]})
+);
+p.position.set(x,y,z);
+p.userData.stage=stage;
+scene.add(p);
+platforms.push(p);
+}
+}
+
+function start(){
+document.getElementById('menu').style.display='none';
+document.getElementById('hud').style.display='block';
+document.getElementById('controls').style.display='flex';
+if(!renderer)init();
+playing=true;
+}
+
+function openShop(){document.getElementById('shop').style.display='block'}
+function closeShop(){document.getElementById('shop').style.display='none'}
+
+function buy(price,color,id){
+if(price>coins){alert('Za mało monet!');return}
+coins-=price;
+skin=color;
+player.material.color.set(color);
+updateHud();
+alert('Nowy skin założony!');
+}
+function updateHud(){
+document.getElementById('coins').textContent=coins;
+document.getElementById('level').textContent=level;
+}
+
+function jump(){
+if(playing && Math.abs(vy)<.001 && player.position.y<5)vy=.27;
+}
+document.addEventListener('keydown',e=>{
+if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=true;
+if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=true;
+if(e.code==='Space')jump();
+});
+document.addEventListener('keyup',e=>{
+if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+});
+document.addEventListener('keyup',e=>{
+if(e.code==='ArrowRight'||e.code==='KeyD')keys.right=false;
+if(e.code==='ArrowLeft'||e.code==='KeyA')keys.left=false;
+});
+document.querySelectorAll('#controls button').forEach((b,i)=>{
+if(i!==1){
+b.addEventListener('pointerup',()=>{keys.left=false;keys.right=false});
+}
+});
+
+function animate(){
+requestAnimationFrame(animate);
+if(playing){
+if(keys.right)player.position.x+=speed;
+if(keys.left)player.position.x-=speed;
+player.position.z+=(Math.sin(player.position.x*.7)*.015-player.position.z)*.02;
+vy-=.012;
+player.position.y+=vy;
+
+let landed=false;
+for(let i=0;i<platforms.length;i++){
+let p=platforms[i];
+if(Math.abs(player.position.x-p.position.x)<1.35 &&
+Math.abs(player.position.z-p.position.z)<1.3 &&
+vy<=0 &&
+player.position.y>=p.position.y+.5 &&
+player.position.y+vy<=p.position.y+.8){
+player.position.y=p.position.y+1.25;
+vy=0;
+landed=true;
+if(i!==lastPlatform){
+lastPlatform=i;
+coins+=1;
+}
+break;
+}
+}
+level=Math.min(700,Math.max(1,Math.floor(player.position.x/15)+1));
+if(player.position.y< -10){
+player.position.set(Math.max(0,(level-1)*15),3,0);
+vy=0;
+}
+if(level===700 && player.position.x>10490){
+playing=false;
+alert('🏆 GRATULACJE! UKOŃCZYŁEŚ 700 LEVELI!');
+}
+camera.position.set(player.position.x-7,player.position.y+7,player.position.z+12);
+camera.lookAt(player.position);
+updateHud();
+}
+renderer.render(scene,camera);
+}
+window.addEventListener('resize',()=>{
+if(!camera)return;
+camera.aspect=innerWidth/innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
